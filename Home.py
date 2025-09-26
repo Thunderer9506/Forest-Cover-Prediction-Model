@@ -9,7 +9,7 @@ import io
 st.set_page_config(
     page_title="Home",
     page_icon="👋",
-    layout='wide'
+    layout='centered'
 )
 
 st.sidebar.success("Go to Prediction Page to Predict the price of your Car")
@@ -53,7 +53,7 @@ ax = sns.countplot(data=forestData,x='Cover_Type',order=[2,1,3,7,6,5,4])
 ax.set_xlabel('Cover_Type')
 ax.set_ylabel('Count')
 ax.set_ylim(0,300000)
-ax.set_xticklabels([0,1,2,3,4,5,6])
+ax.set_xticks([0,1,2,3,4,5,6],[0,1,2,3,4,5,6])
 plt.tight_layout()
 for i,j in enumerate(forestData['Cover_Type'].value_counts()):
     ax.text(i, j, str(j),
@@ -98,7 +98,7 @@ ax2.set_title('Wilderness2 vs Cover_type',fontdict={'size':'18','weight':'600'})
 ax3.set_title('Wilderness3 vs Cover_type',fontdict={'size':'18','weight':'600'})
 ax4.set_title('Wilderness4 vs Cover_type',fontdict={'size':'18','weight':'600'})
 plt.tight_layout()
-plt.show()
+
 st.pyplot(fig)
 
 st.divider()
