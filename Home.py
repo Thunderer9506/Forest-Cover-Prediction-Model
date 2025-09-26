@@ -9,6 +9,7 @@ import io
 st.set_page_config(
     page_title="Home",
     page_icon="👋",
+    layout='wide'
 )
 
 st.sidebar.success("Go to Prediction Page to Predict the price of your Car")
@@ -34,6 +35,9 @@ st.divider()
 st.write('### Data Info')
 st.text(info[37:])
 
+st.write('### Data Head')
+st.write(forestData.head())
+
 st.divider()
 
 st.write('### Data Described')
@@ -41,100 +45,86 @@ st.write(forestData.describe())
 
 st.write('## Exploratory Data Analysis')
 
-st.write('### Price Distribution')
+st.write('### Forest Cover Type Distibution')
 
-fig = plt.figure(figsize=(7,4))
-ax = sns.histplot(forestData['price'])
-ax.bar_label(ax.containers[0])
-ax.set_xlabel("Price ( In USD $ )",fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Count",fontdict={"weight":"bold","size":14})
-fig.tight_layout()
+fig = plt.figure()
+ax = sns.countplot(data=forestData,x='Cover_Type',order=[2,1,3,7,6,5,4])
+
+ax.set_xlabel('Cover_Type')
+ax.set_ylabel('Count')
+ax.set_ylim(0,300000)
+ax.set_xticklabels([0,1,2,3,4,5,6])
+plt.tight_layout()
+for i,j in enumerate(forestData['Cover_Type'].value_counts()):
+    ax.text(i, j, str(j),
+            fontsize = 8,
+            ha='center',
+            va='bottom',
+            )
 
 st.pyplot(fig)
 
-st.write('### Value Count of each Car Maker')
+st.divider()
 
-fig = plt.figure(figsize=(8,6))
+st.write('### Feature Distributions')
 
-ax = sns.barplot(data=forestData['make'].value_counts(),errorbar=None,estimator="sum",orient="y",width=1,gap=0.2)
-ax.bar_label(ax.containers[0])
-ax.set_xlabel("Count",fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Maker's Name",fontdict={"weight":"bold","size":14})
+fig = forestData[['Elevation','Aspect','Slope','Horizontal_Distance_To_Hydrology','Vertical_Distance_To_Hydrology',
+           'Horizontal_Distance_To_Roadways','Horizontal_Distance_To_Fire_Points','Hillshade_9am','Hillshade_Noon',
+           'Hillshade_3pm']].hist(bins=50, figsize=(20,15), layout=(4,3))
+plt.tight_layout()
+st.pyplot(fig[0][0].figure)
 
-fig.tight_layout()
-st.pyplot(fig)
+st.divider()
 
-st.write('### Fuel Distribution')
+st.write('### Geospatial Relationships')
+st.text('🌍 Since this is geographical data, features like Horizontal_Distance_To_Roadways, Vertical_Distance_To_Hydrology, etc., may relate spatially.')
 
-fig = plt.figure(figsize=(8,4))
-ax = sns.barplot(forestData['fuel'].value_counts(),errorbar=None,orient='y')
-ax.bar_label(ax.containers[0])
-ax.set_xlabel("Count",fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Fuel Type",fontdict={"weight":"bold","size":14})
-fig.tight_layout()
-st.pyplot(fig)
-
-st.write('### Body Distribution')
-
-fig = plt.figure(figsize=(8,4))
-ax = sns.barplot(forestData['body'].value_counts(),errorbar=None,orient='y')
-ax.bar_label(ax.containers[0],fontsize = 10)
-ax.set_xlabel("Count",fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Body Type",fontdict={"weight":"bold","size":14})
-fig.tight_layout()
-st.pyplot(fig)
-
-st.write('### Types of Drive train')
-
-fig = plt.figure(figsize=(7,5))
-
-ax = sns.histplot(forestData['drivetrain'])
-ax.bar_label(ax.containers[0])
-ax.tick_params(axis='x')
-ax.set_xlabel("Drive Trains",fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Count",fontdict={"weight":"bold","size":14})
-
-fig.tight_layout()
-st.pyplot(fig)
-
-st.write('### Total spending by maker (sum of prices)')
-
-make_price = forestData.groupby('make', as_index=False)['price'].sum()
-fig = plt.figure(figsize=(11,8))
-ax = sns.scatterplot(
-    data=make_price,
-    x='price',
-    y='make',
-    size='price',
-    hue='price',
-    sizes=(50, 500),
-    palette='viridis',
-    legend=False
-)
-
-max_price = make_price['price'].max()
-ticks = np.linspace(0, max_price, 6)
-ax.set_xticks(ticks)
-ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'${x/1000:.0f}k'))
-
-ax.set_xlabel('Total Price (USD)',fontdict={"weight":"bold","size":14})
-ax.set_ylabel("Maker's Name",fontdict={"weight":"bold","size":14})
+fig = plt.figure()
+sns.scatterplot(x='Horizontal_Distance_To_Hydrology', y='Vertical_Distance_To_Hydrology', hue='Cover_Type', data=forestData)
 fig.tight_layout()
 st.pyplot(fig)
 
 st.divider()
 
+st.write('### Wilderness Area vs Cover Type analysis')
+
+fig,axes = plt.subplots(2,2,figsize = (16,10))
+ax1 = sns.countplot(x='Wilderness_Area1', hue='Cover_Type', data=forestData,ax=axes[0,0])
+ax2 = sns.countplot(x='Wilderness_Area2', hue='Cover_Type', data=forestData,ax=axes[0,1])
+ax3 = sns.countplot(x='Wilderness_Area3', hue='Cover_Type', data=forestData,ax=axes[1,0])
+ax4 = sns.countplot(x='Wilderness_Area4', hue='Cover_Type', data=forestData,ax=axes[1,1])
+ax1.set_title('Wilderness1 vs Cover_type',fontdict={'size':'18','weight':'600'})
+ax2.set_title('Wilderness2 vs Cover_type',fontdict={'size':'18','weight':'600'})
+ax3.set_title('Wilderness3 vs Cover_type',fontdict={'size':'18','weight':'600'})
+ax4.set_title('Wilderness4 vs Cover_type',fontdict={'size':'18','weight':'600'})
+plt.tight_layout()
+plt.show()
+st.pyplot(fig)
+
+st.divider()
+
+st.write('### Soil Type vs Cover type relation')
+
+soil_cols = [f"Soil_Type{i}" for i in range(1,41)]
+soil_onehot = forestData[soil_cols]
+
+# get soil type label (e.g. 'Soil_Type7') then convert to integer 7
+soil_type_series = soil_onehot.idxmax(axis=1).str.replace('Soil_Type', '').astype(int)
+
+fig, ax = plt.subplots()
+pd.crosstab(soil_type_series, forestData['Cover_Type']).plot(kind='bar', stacked=True, ax=ax)
+ax.set_xlabel('Soil_Type')
+ax.set_ylabel('Count')
+ax.set_title('Soil Type vs Cover Type', fontdict={'size':'18','weight':'600'})
+plt.tight_layout()
+
+st.pyplot(fig)
+
+st.divider()
+
 st.write("## Results")
-st.text('1. Avg Price range of cars are $30k - $60k')
-st.write('''
-         2. These are the Top 5 Most selling cars
-            - JEEP
-            - Hyundai
-            - Dodge
-            - Ford
-            - Ram
-         ''')
-st.text('3. Gasoline Cars Performed best in the market')
-st.text('4. Customer preferred SUV body type cars the most')
-st.text('5. All-Wheel and 4-Wheel drive cars are used more')
-st.text('6. Jeep made over $9000k+ after Hyundai and Ram which made over 4000k+ each in car selling')
+st.text('1. Forest Contain Large Number of Spruce/Fir Trees')
+st.text('2. Trees are usually 3000m Long')
+st.text('3. Trees are generally near to river/lake')
+st.text('4. Trees get more Hillshade during 9 am and Noon')
+st.text('5. Tree 2 can grow in any type of soil specially in type 29')
