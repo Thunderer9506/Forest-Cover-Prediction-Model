@@ -10,7 +10,7 @@ st.set_page_config(
     layout='centered'
 )
 
-st.sidebar.success("Go to Prediction Page to Predict the price of your Car")
+st.sidebar.success("🌴 Forest Cover Type Prediction Model")
 
 data1 = pd.read_csv('train.csv',index_col="Id") # Got from internship
 data2 = pd.read_csv('covtype.csv') # got from internet
