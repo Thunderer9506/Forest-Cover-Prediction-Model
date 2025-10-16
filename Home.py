@@ -14,10 +14,10 @@ st.set_page_config(
 
 
 @st.cache_data
-def concatData():
-    data1 = pd.read_csv('train.csv',index_col="Id") # Got from internship
-    data2 = pd.read_csv('covtype.csv') # got from internet
-    return pd.concat([data2,data1],ignore_index=True)
+def importData():
+    return pd.read_csv('covtype.csv').drop(["ID"],axis=1)
+
+forestData = importData()
 
 # Add this function with your other cached functions
 @st.cache_data
@@ -57,7 +57,7 @@ def featuredistributionPlots():
     return fig
 
 
-@st.cache_resource
+@st.cache_data
 def distancerelatedFeatures():
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(20, 10))
     forestData[['Horizontal_Distance_To_Hydrology','Vertical_Distance_To_Hydrology',
@@ -65,14 +65,14 @@ def distancerelatedFeatures():
     plt.tight_layout()
     return fig
 
-@st.cache_resource
+@st.cache_data
 def hydorlogyScatterPlot():
     fig = plt.figure()
     sns.scatterplot(x='Horizontal_Distance_To_Hydrology', y='Vertical_Distance_To_Hydrology', 
                     hue='Cover_Type', data=forestData)
     return fig
 
-@st.cache_resource
+@st.cache_data
 def wildernessPlot():
     fig,axes = plt.subplots(2,2,figsize = (16,12))
     ax1 = sns.countplot(x='Wilderness_Area1', hue='Cover_Type', data=forestData,ax=axes[0,0])
@@ -86,7 +86,31 @@ def wildernessPlot():
     plt.tight_layout()
     return fig
 
-forestData = concatData()
+@st.cache_data
+def soilCoverType():
+    soil_cols = [f"Soil_Type{i}" for i in range(1,41)]
+    soil_onehot = forestData[soil_cols]
+
+    # get soil type label (e.g. 'Soil_Type7') then convert to integer 7
+    soil_type_series = soil_onehot.idxmax(axis=1).str.replace('Soil_Type', '').astype(int)
+    
+    # Create figure first
+    fig = plt.figure(figsize=(12,6))
+    
+    # Create the crosstab and plot it
+    pd.crosstab(soil_type_series, forestData['Cover_Type']).plot(
+        kind='bar', 
+        stacked=True,
+        ax=fig.gca()  # get current axes
+    )
+    
+    plt.xlabel('Soil_Type')
+    plt.ylabel('Count')
+    plt.title('Soil Type vs Cover Type', fontdict={'size':'18', 'weight':'600'})
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    return fig
 
 # Sidebar
 with st.sidebar:
@@ -161,6 +185,9 @@ with tab3:
         # Your existing wilderness area analysis
         # make it for other wilderness area too
         st.pyplot(wildernessPlot())
+
+    st.write("#### Soil vs Cover Type")
+    st.pyplot(soilCoverType())
 
 with tab4:
     st.write("### Key Insights")
