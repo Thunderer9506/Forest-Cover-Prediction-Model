@@ -14,7 +14,7 @@ st.set_page_config(
 
 @st.cache_resource
 def train_and_evaluate_model() -> Tuple[Any, dict]:
-    forestData = pd.read_csv('covtype.csv').drop(["ID"],axis=1)
+    forestData = pd.read_csv('covtype.csv').drop(["ID"],axis=1)[:20000]
     X = forestData.drop(['Cover_Type'],axis=1)
     y = forestData['Cover_Type']
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=30)
