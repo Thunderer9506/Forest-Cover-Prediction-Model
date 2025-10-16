@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
-import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, f1_score
+from typing import Tuple, Any
 
 # Page Configuration
 st.set_page_config(
@@ -10,26 +13,42 @@ st.set_page_config(
 )
 
 @st.cache_resource
-def importingModel():
-    # Load model
-    with open("model.pkl", 'rb') as file:
-        model = pickle.load(file)
-    
-    # Load evaluation data
-    with open("model_evaluation.pkl", 'rb') as file:
-        evaluation_data = pickle.load(file)
-    
-    return model, evaluation_data
+def train_and_evaluate_model() -> Tuple[Any, dict]:
+    forestData = pd.read_csv('covtype.csv').drop(["ID"],axis=1)
+    X = forestData.drop(['Cover_Type'],axis=1)
+    y = forestData['Cover_Type']
+    X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=30)
+    rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 
-# Update model loading
-model, evaluation_data = importingModel()
+    rf_classifier.fit(X_train, y_train)
+    
+    forestType = ['Spruce/Fir', 'Lodgepole Pine', 'Ponderosa Pine', 
+              'Cottonwood/Willow', 'Aspen', 'Douglas-fir', 'Krummholz']
+    
+    y_pred = rf_classifier.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    classification_rep = classification_report(y_test, y_pred,output_dict=True)
+    weighted_f1 = f1_score(y_test, y_pred, average='weighted')
+    
+    evaluation_data = {
+        'accuracy': accuracy,
+        'weighted_f1': weighted_f1,
+        'classification_report': classification_rep,
+        'feature_names': X.columns.tolist(),
+        'class_names': forestType
+    }
+    
+    return rf_classifier, evaluation_data
+
+model, evaluation_data = train_and_evaluate_model()
 
 def predict_price(input_data):
     df = pd.DataFrame([input_data])
     prediction = model.predict(df)
     return round(float(prediction[0]), 2)
 
-# Main content
+
 st.title("🔮 Forest Cover Type Prediction")
 st.markdown("""
 This interactive tool predicts forest cover types based on cartographic variables. 
@@ -40,7 +59,7 @@ with st.sidebar:
     st.success("Make predictions by adjusting the parameters")
     st.info("The model uses Random Forest classification to predict cover types")
 
-# Main content tabs
+
 tab1, tab2 = st.tabs(["🎯 Prediction", "ℹ️ Feature Guide"])
 
 with tab1:
@@ -94,7 +113,7 @@ with tab1:
         confidence_placeholder = st.empty()
         
         if st.button("🔮 Predict Cover Type", use_container_width=True):
-            # ... existing prediction code ...
+            
             input_sliderbar = {
                 "Elevation": elevation,
                 "Aspect":aspect ,
@@ -115,8 +134,8 @@ with tab1:
             print(input_data)
             cType = predict_price(input_data)
             prediction_placeholder.metric("Cover Type", forestType[int(cType)-1])
-            # Add confidence score (if available from model)
-            confidence_placeholder.progress(0.96)  # Example confidence
+            
+            confidence_placeholder.progress(0.96)  
             confidence_placeholder.caption("Prediction Confidence: 96%")
         
         
@@ -156,7 +175,6 @@ with tab2:
         with st.expander(feature):
             st.write(description)
 
-# Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
