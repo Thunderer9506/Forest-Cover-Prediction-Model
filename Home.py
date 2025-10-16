@@ -2,127 +2,186 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 import io
 
+# Page Configuration
 st.set_page_config(
-    page_title="Home",
-    page_icon="👋",
-    layout='centered'
+    page_title="Forest Cover Analysis Dashboard",
+    page_icon="🌲",
+    layout='wide'  # Changed to wide layout for better visualization
 )
 
-st.sidebar.success("🌴 Forest Cover Type Prediction Model")
 
-data1 = pd.read_csv('train.csv',index_col="Id") # Got from internship
-data2 = pd.read_csv('covtype.csv') # got from internet
-forestData = pd.concat([data2,data1],ignore_index=True)
+@st.cache_data
+def concatData():
+    data1 = pd.read_csv('train.csv',index_col="Id") # Got from internship
+    data2 = pd.read_csv('covtype.csv') # got from internet
+    return pd.concat([data2,data1],ignore_index=True)
 
-st.title("Forest Cover Type Prediction Model")
+# Add this function with your other cached functions
+@st.cache_data
+def get_dataset_stats(df):
+    stats = {
+        "Total Records": f"{df.shape[0]:,}",
+        "Total Features": f"{len(df.columns)}",
+        "Numerical Features": f"{len(df.select_dtypes(include=['int64', 'float64']).columns)}",
+        "Categorical Features": f"{len(df.select_dtypes(include=['object', 'bool']).columns)}",
+        "Missing Values": f"{df.isnull().sum().sum():,}",
+        "Memory Usage": f"{df.memory_usage().sum() / 1024**2:.2f} MB",
+        "Unique Cover Types": f"{df['Cover_Type'].nunique()}",
+        "Most Common Cover Type": f"Type {df['Cover_Type'].mode()[0]} ({df['Cover_Type'].value_counts().iloc[0]:,} samples)",
+        "Elevation Range": f"{df['Elevation'].min():,} - {df['Elevation'].max():,} meters",
+    }
+    return stats
 
-st.write("## Statistics")
+@st.cache_data
+def covertypePlot():
+    fig = px.histogram(forestData,x="Cover_Type",title="Cover Type")
+    fig.update_layout(
+        bargap = 0.2,
+        xaxis=dict(
+            tickmode='linear', 
+            tick0=1,
+        )
+    )
+    return fig
 
-st.write('### Shape of the data: ')
-st.write(f'Rows : {forestData.shape[0]}')
-st.write(f'Cols( {len(list(forestData.columns))} ) : `{", ".join(list(forestData.columns))}`')
+@st.cache_data
+def featuredistributionPlots():
+    st.write("#### Terrain Features")
+    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(20, 10))
+    forestData[['Elevation','Aspect','Slope',
+                'Hillshade_9am','Hillshade_Noon','Hillshade_3pm']].hist(bins=50,ax=axes)
+    plt.tight_layout()
+    return fig
 
-buffer = io.StringIO()
-forestData.info(buf=buffer)
-info = buffer.getvalue()
 
-st.divider()
+@st.cache_resource
+def distancerelatedFeatures():
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(20, 10))
+    forestData[['Horizontal_Distance_To_Hydrology','Vertical_Distance_To_Hydrology',
+                'Horizontal_Distance_To_Roadways','Horizontal_Distance_To_Fire_Points']].hist(bins=50,ax=axes)
+    plt.tight_layout()
+    return fig
 
-st.write('### Data Info')
-st.text(info[37:])
+@st.cache_resource
+def hydorlogyScatterPlot():
+    fig = plt.figure()
+    sns.scatterplot(x='Horizontal_Distance_To_Hydrology', y='Vertical_Distance_To_Hydrology', 
+                    hue='Cover_Type', data=forestData)
+    return fig
 
-st.write('### Data Head')
-st.write(forestData.head())
+@st.cache_resource
+def wildernessPlot():
+    fig,axes = plt.subplots(2,2,figsize = (16,12))
+    ax1 = sns.countplot(x='Wilderness_Area1', hue='Cover_Type', data=forestData,ax=axes[0,0])
+    ax2 = sns.countplot(x='Wilderness_Area2', hue='Cover_Type', data=forestData,ax=axes[0,1])
+    ax3 = sns.countplot(x='Wilderness_Area3', hue='Cover_Type', data=forestData,ax=axes[1,0])
+    ax4 = sns.countplot(x='Wilderness_Area4', hue='Cover_Type', data=forestData,ax=axes[1,1])
+    ax1.set_title('Wilderness1 vs Cover_type',fontdict={'size':'18','weight':'600'})
+    ax2.set_title('Wilderness2 vs Cover_type',fontdict={'size':'18','weight':'600'})
+    ax3.set_title('Wilderness3 vs Cover_type',fontdict={'size':'18','weight':'600'})
+    ax4.set_title('Wilderness4 vs Cover_type',fontdict={'size':'18','weight':'600'})
+    plt.tight_layout()
+    return fig
 
-st.divider()
+forestData = concatData()
 
-st.write('### Data Described')
-st.write(forestData.describe())
+# Sidebar
+with st.sidebar:
+    st.title("🌳 Navigation")
+    st.success("Forest Cover Type Analysis")
+    st.info("This application analyzes forest cover types based on cartographic variables.")
+    
+    # Add download option for sample data
+    st.download_button(
+        label="Download Sample Data",
+        data=forestData.sample(5).to_csv(),
+        file_name="sample_forest_data.csv",
+        mime="text/csv"
+    )
 
-st.write('## Exploratory Data Analysis')
 
-st.write('### Forest Cover Type Distibution')
+# Main Content
+st.title("🌲 Forest Cover Type Analysis Dashboard")
+st.markdown("""
+This dashboard provides comprehensive analysis of forest cover types based on various geographical 
+and cartographic variables. The dataset contains observations of Roosevelt National Forest in Colorado.
+""")
 
-fig = plt.figure()
-ax = sns.countplot(data=forestData,x='Cover_Type',order=[2,1,3,7,6,5,4])
+# Data Overview Tab
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Data Overview", "📈 Feature Analysis", "🗺️ Geospatial Insights", "🔍 Key Findings"])
 
-ax.set_xlabel('Cover_Type')
-ax.set_ylabel('Count')
-ax.set_ylim(0,300000)
-ax.set_xticks([0,1,2,3,4,5,6],[0,1,2,3,4,5,6])
-plt.tight_layout()
-for i,j in enumerate(forestData['Cover_Type'].value_counts()):
-    ax.text(i, j, str(j),
-            fontsize = 8,
-            ha='center',
-            va='bottom',
-            )
+with tab1:
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("### Dataset Statistics")
+        stats = get_dataset_stats(forestData)
+        
+        for key, value in stats.items():
+            st.markdown(f"""
+                <b>{key}:</b> {value}
+            """, unsafe_allow_html=True)
+        
+    with col2:
+        st.write("### Class Distribution")
+        # Your existing cover type distribution plot
+        st.plotly_chart(covertypePlot())
+        
+    
+    st.write("### Sample Data")
+    st.dataframe(forestData.head(), use_container_width=True)
 
-st.pyplot(fig)
+with tab2:
+    st.write("### Feature Distributions")
+    # Your existing feature distribution plots
+    st.pyplot(featuredistributionPlots())
 
-st.divider()
+    st.write("#### Distance Features")
+    # Show distance-related features
+   
+    st.pyplot(distancerelatedFeatures())
 
-st.write('### Feature Distributions')
+with tab3:
+    st.write("### Geographic Relationships")
+    
+    # Your existing geospatial plot with improvements
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("#### Hydrology Analysis")
+        # Your existing hydrology scatter plot
+        
+        st.pyplot(hydorlogyScatterPlot())
+        
+    with col2:
+        st.write("#### Wilderness Areas")
+        # Your existing wilderness area analysis
+        # make it for other wilderness area too
+        st.pyplot(wildernessPlot())
 
-fig = forestData[['Elevation','Aspect','Slope','Horizontal_Distance_To_Hydrology','Vertical_Distance_To_Hydrology',
-           'Horizontal_Distance_To_Roadways','Horizontal_Distance_To_Fire_Points','Hillshade_9am','Hillshade_Noon',
-           'Hillshade_3pm']].hist(bins=50, figsize=(20,15), layout=(4,3))
-plt.tight_layout()
-st.pyplot(fig[0][0].figure)
+with tab4:
+    st.write("### Key Insights")
+    
+    # Convert your results into more engaging format
+    insights = {
+        "Dominant Species": "Spruce/Fir trees are predominant in the forest",
+        "Elevation Pattern": "Most trees are found at around 3000m elevation",
+        "Water Proximity": "Trees show clustering near water bodies",
+        "Sunlight Exposure": "Maximum hillshade during morning and noon",
+        "Soil Adaptability": "Cover Type 2 shows high adaptability across soil types"
+    }
+    
+    for title, description in insights.items():
+        with st.expander(title):
+            st.write(description)
 
-st.divider()
-
-st.write('### Geospatial Relationships')
-st.text('🌍 Since this is geographical data, features like Horizontal_Distance_To_Roadways, Vertical_Distance_To_Hydrology, etc., may relate spatially.')
-
-fig = plt.figure()
-sns.scatterplot(x='Horizontal_Distance_To_Hydrology', y='Vertical_Distance_To_Hydrology', hue='Cover_Type', data=forestData)
-fig.tight_layout()
-st.pyplot(fig)
-
-st.divider()
-
-st.write('### Wilderness Area vs Cover Type analysis')
-
-fig,axes = plt.subplots(2,2,figsize = (16,10))
-ax1 = sns.countplot(x='Wilderness_Area1', hue='Cover_Type', data=forestData,ax=axes[0,0])
-ax2 = sns.countplot(x='Wilderness_Area2', hue='Cover_Type', data=forestData,ax=axes[0,1])
-ax3 = sns.countplot(x='Wilderness_Area3', hue='Cover_Type', data=forestData,ax=axes[1,0])
-ax4 = sns.countplot(x='Wilderness_Area4', hue='Cover_Type', data=forestData,ax=axes[1,1])
-ax1.set_title('Wilderness1 vs Cover_type',fontdict={'size':'18','weight':'600'})
-ax2.set_title('Wilderness2 vs Cover_type',fontdict={'size':'18','weight':'600'})
-ax3.set_title('Wilderness3 vs Cover_type',fontdict={'size':'18','weight':'600'})
-ax4.set_title('Wilderness4 vs Cover_type',fontdict={'size':'18','weight':'600'})
-plt.tight_layout()
-
-st.pyplot(fig)
-
-st.divider()
-
-st.write('### Soil Type vs Cover type relation')
-
-soil_cols = [f"Soil_Type{i}" for i in range(1,41)]
-soil_onehot = forestData[soil_cols]
-
-# get soil type label (e.g. 'Soil_Type7') then convert to integer 7
-soil_type_series = soil_onehot.idxmax(axis=1).str.replace('Soil_Type', '').astype(int)
-
-fig, ax = plt.subplots()
-pd.crosstab(soil_type_series, forestData['Cover_Type']).plot(kind='bar', stacked=True, ax=ax)
-ax.set_xlabel('Soil_Type')
-ax.set_ylabel('Count')
-ax.set_title('Soil Type vs Cover Type', fontdict={'size':'18','weight':'600'})
-plt.tight_layout()
-
-st.pyplot(fig)
-
-st.divider()
-
-st.write("## Results")
-st.text('1. Forest Contain Large Number of Spruce/Fir Trees')
-st.text('2. Trees are usually 3000m Long')
-st.text('3. Trees are generally near to river/lake')
-st.text('4. Trees get more Hillshade during 9 am and Noon')
-st.text('5. Tree 2 can grow in any type of soil specially in type 29')
+# Add footer
+st.markdown("""---""")
+st.markdown("""
+<div style='text-align: center'>
+    <i>Data Source: Roosevelt National Forest, Colorado</i>
+</div>
+""", unsafe_allow_html=True)
