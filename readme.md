@@ -34,7 +34,7 @@ This interactive dashboard provides comprehensive analysis and prediction capabi
 ## 🖥️ Live Demo
 
 Experience the Forest Cover Prediction app in action:
-[Forest Cover Prediction App](https://forest-cover-prediction.streamlit.app/)
+[Forest Cover Prediction App](https://thunderer9506-forest-cover-prediction-model-home-hha8oq.streamlit.app/)
 
 ## 📈 Results
 
