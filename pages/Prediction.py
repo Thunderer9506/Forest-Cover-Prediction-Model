@@ -5,6 +5,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from typing import Tuple, Any
 
+if 'model_trained' not in st.session_state:
+    st.session_state.model_trained = False
+    st.session_state.model = None
+    st.session_state.evaluation_data = None
+
 # Page Configuration
 st.set_page_config(
     page_title="Forest Cover Prediction",
@@ -13,8 +18,8 @@ st.set_page_config(
 )
 
 @st.cache_resource
-def train_and_evaluate_model() -> Tuple[Any, dict]:
-    forestData = pd.read_csv('covtype.csv').drop(["ID"],axis=1)[:20000]
+def train_and_evaluate_model(trainData) -> Tuple[Any, dict]:
+    forestData = pd.read_csv('covtype.csv').drop(["ID"],axis=1)[:trainData]
     X = forestData.drop(['Cover_Type'],axis=1)
     y = forestData['Cover_Type']
     X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=30)
@@ -41,7 +46,28 @@ def train_and_evaluate_model() -> Tuple[Any, dict]:
     
     return rf_classifier, evaluation_data
 
-model, evaluation_data = train_and_evaluate_model()
+if not st.session_state.model_trained:
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("### 🎯 Select Training Data Size")
+        st.warning("Because the Data is very large we let user decide on how much data should the model be trained on")
+        trainData = st.slider("Choose how many rows to train on", 1000, 596132, 10000, 1000)
+        if st.button("Train Model", use_container_width=True):
+            with st.spinner('Training model... Please wait...'):
+                model, evaluation_data = train_and_evaluate_model(trainData)
+                st.session_state.model = model
+                st.session_state.evaluation_data = evaluation_data
+                st.session_state.model_trained = True
+                st.success('Model training complete!')
+                st.rerun()
+else:
+    model = st.session_state.model
+    evaluation_data = st.session_state.evaluation_data
+    st.title("🔮 Forest Cover Type Prediction")
+    st.markdown("""
+    This interactive tool predicts forest cover types based on cartographic variables. 
+    Select the features using the sliders below and click 'Predict' to see the results.
+    """)
 
 def predict_price(input_data):
     df = pd.DataFrame([input_data])
@@ -49,11 +75,7 @@ def predict_price(input_data):
     return round(float(prediction[0]), 2)
 
 
-st.title("🔮 Forest Cover Type Prediction")
-st.markdown("""
-This interactive tool predicts forest cover types based on cartographic variables. 
-Select the features using the sliders below and click 'Predict' to see the results.
-""")
+
 with st.sidebar:
     st.title("🌲 Navigation")
     st.success("Make predictions by adjusting the parameters")
